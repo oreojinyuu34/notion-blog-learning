@@ -1,12 +1,16 @@
 import { Client } from "@notionhq/client";
-import { start } from "repl";
+import { NUMBER_OF_POSTS_PER_PAGE } from "constants/constants";
+import { NotionToMarkdown } from "notion-to-md";
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
 });
 
+const n2m = new NotionToMarkdown({ notionClient: notion});
+
 export const getAllPosts = async () => {
   // 環境変数からdatabase_idを取得し、undefinedでないことを保証します。
+  // const databaseId = process.env.NOTION_DATABASE_ID as string;
   const databaseId = process.env.NOTION_DATABASE_ID;
   if (!databaseId) {
     // database_idが見つからない場合は、エラーを投げて処理を中断します。
@@ -50,3 +54,56 @@ const getPageMetaData = (post: any) => {
   };
 
 };
+
+export const getSinglePost = async (slug: string) => {
+  const response =await notion.databases.query({
+    database_id:process.env.NOTION_DATABASE_ID,
+    filter: {
+      property: "Slug",
+      formula: {
+        string: {
+          equals: slug,
+        }
+      }
+    }
+  })
+  const page = response.results[0]
+  const metadata = getPageMetaData(page)
+  //console.log(metadata)
+  const mdBlocks = await n2m.pageToMarkdown(page.id);
+  const mdString = n2m.toMarkdownString(mdBlocks);
+  console.log(mdString);
+
+  return {
+    metadata,
+    markdown: mdString,
+  }
+}
+
+/* トップページ用記事の取得(NUMBER_OF_POSTS_PER_PAGE) */
+export const getPostsForTopPage = async (pageSize = NUMBER_OF_POSTS_PER_PAGE) => {
+  const allPosts = await getAllPosts();
+  const fourPosts = allPosts.slice(0, pageSize);
+  return fourPosts;
+}
+
+/* ページ番号に応じた記事取得 */
+export const getPostsByPage = async (page:number) => {
+  const allPosts =await getAllPosts();
+
+  const startIndex = (page - 1) * NUMBER_OF_POSTS_PER_PAGE;
+  const endIndex = startIndex + NUMBER_OF_POSTS_PER_PAGE;
+
+  return allPosts.slice(startIndex,endIndex);
+}
+
+
+export const getNumberOfPages =async () => {
+  const allPosts = await getAllPosts();
+
+  return(
+    Math.floor(allPosts.length /NUMBER_OF_POSTS_PER_PAGE) + (allPosts.length % NUMBER_OF_POSTS_PER_PAGE > 0
+    ?1
+    : 0));
+
+}

@@ -1,21 +1,22 @@
 import Head from "next/head";
-import { getAllPosts } from "lib/notionAPI";
+import { getAllPosts, getPostsForTopPage } from "lib/notionAPI";
 import SinglePost from "components/Post/SinglePost";
+import { GetStaticProps } from "next";
+import Link from "next/link";
 
-export const getStaticProps = async () => {
-  const allPosts = await getAllPosts();
+export const getStaticProps: GetStaticProps = async () => {
+  const fourPosts = await getPostsForTopPage(4);
 
   return {
     props: {
-      allPosts,
+      fourPosts,
     },
     //6時間ごとに更新60秒×60分×時間
     revalidate: 60 * 60 * 6,
   };
 };
 
-export default function Home({ allPosts }: any) {
-  console.log(allPosts);
+export default function Home({ fourPosts }: any) {
   return (
     <div className="container h-full w-full mx-auto">
       <Head>
@@ -27,17 +28,24 @@ export default function Home({ allPosts }: any) {
 
       <main className="container w-full mt-16"></main>
       <h1 className="text-5xl font-medium text-center mb-16">NotionでBlog🐴</h1>
-      {allPosts.map((post: any) => (
-        <div className="mx-4">
+      {fourPosts.map((post: any) => (
+        <div className="mx-4" key={post.id}>
           <SinglePost
             title={post.title}
             description={post.description}
             date={post.date}
             tags={post.tags}
             slug={post.slug}
+            isPaginationPage={false}
           />
         </div>
       ))}
+      <Link
+        href="/posts/page/1"
+        className="block lg:w-1/2 mx-auto text-right text-lg font-medium p-3 pb-10 mt-3"
+      >
+        ...もっと見る
+      </Link>
     </div>
   );
 }
