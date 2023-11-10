@@ -22,7 +22,7 @@ export const getStaticProps = async ({ params }: any) => {
       post,
     },
     //6時間ごとに更新60秒×60分×時間
-    revalidate: 60 * 60 * 6,
+    revalidate: 60,
   };
 };
 
