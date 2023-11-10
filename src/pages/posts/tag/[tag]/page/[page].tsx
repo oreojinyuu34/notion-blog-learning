@@ -4,20 +4,29 @@ import SinglePost from "components/Post/SinglePost";
 import {
   getAllTags,
   getNumberOfPages,
+  getNumberOfPagesByTag,
   getPostsByPage,
+  getPostsByTagAndPage,
   getPostsForTopPage,
 } from "lib/notionAPI";
 import Pagination from "components/Pagination/Pagination";
 import Tag from "components/Tag/Tag";
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  const numberOfPage = await getNumberOfPages();
+  const allTags = await getAllTags();
+  let params: any = [];
 
-  let params = [];
-  for (let i = 1; i <= numberOfPage; i++) {
-    params.push({ params: { page: i.toString() } });
-  }
+  await Promise.all(
+    allTags.map((tag: string) => {
+      return getNumberOfPagesByTag(tag).then((numberOfPageByTag: number) => {
+        for (let i = 1; i <= numberOfPageByTag; i++) {
+          params.push({ params: { tag: tag, page: i.toString() } });
+        }
+      });
+    })
+  );
 
+  // console.log(params);
   return {
     paths: params,
     fallback: "blocking",
@@ -25,18 +34,31 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 export const getStaticProps: GetStaticProps = async (context) => {
-  const currentPage = context.params?.page?.toString() ?? "1";
-  const postsByPage = await getPostsByPage(
-    parseInt(currentPage.toString(), 10)
+  const currentPage: string = context.params?.page?.toString() ?? "1";
+  const currentTag: string = context.params?.tag?.toString() ?? "defaultTag";
+
+  const upperCaseCurrentTag =
+    currentTag.charAt(0).toUpperCase() + currentTag.slice(1);
+
+  const posts = await getPostsByTagAndPage(
+    upperCaseCurrentTag,
+    parseInt(currentPage, 10)
   );
-  const numberOfPage = await getNumberOfPages();
+
+  // const posts = await getPostsByTagAndPage(
+  //   currentTag,
+  //   parseInt(currentPage, 10)
+  // );
+
+  const numberOfPageByTag = await getNumberOfPagesByTag(upperCaseCurrentTag);
 
   const allTags = await getAllTags();
 
   return {
     props: {
-      postsByPage,
-      numberOfPage,
+      posts,
+      numberOfPageByTag,
+      currentTag,
       allTags,
     },
     //6時間ごとに更新60秒×60分×時間
@@ -44,7 +66,12 @@ export const getStaticProps: GetStaticProps = async (context) => {
   };
 };
 
-const BlogPageList = ({ postsByPage, numberOfPage, allTags }: any) => {
+const BlogTagPageList = ({
+  numberOfPageByTag,
+  posts,
+  currentTag,
+  allTags,
+}: any) => {
   return (
     <div className="container h-full w-full mx-auto">
       <Head>
@@ -58,8 +85,8 @@ const BlogPageList = ({ postsByPage, numberOfPage, allTags }: any) => {
         <h1 className="text-5xl font-medium text-center mb-16">
           NotionでBlog🐴
         </h1>
-        <section className="sm:grid grid-cols-2 w-6/5 gap-3 mx-auto">
-          {postsByPage.map((post: any) => (
+        <section className="sm:grid grid-cols-2 w-5/6 gap-3 mx-auto">
+          {posts.map((post: any) => (
             <div key={post.id}>
               <SinglePost
                 title={post.title}
@@ -72,11 +99,11 @@ const BlogPageList = ({ postsByPage, numberOfPage, allTags }: any) => {
             </div>
           ))}
         </section>
-        <Pagination numberOfPage={numberOfPage} tag={""} />
+        <Pagination numberOfPage={numberOfPageByTag} tag={currentTag} />
         <Tag tags={allTags} />
       </main>
     </div>
   );
 };
 
-export default BlogPageList;
+export default BlogTagPageList;

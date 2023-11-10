@@ -20,6 +20,20 @@ export const getAllPosts = async () => {
   const response = await notion.databases.query({
     database_id: databaseId, // 確実に文字列である変数を使用します。
     page_size: 100, // ページサイズを設定
+    filter: {
+      property: "Published",
+      checkbox: {
+        equals: true,
+      },
+    },
+    sorts: [{
+      property: "日付",
+      //最新の投稿順
+      direction: "descending",
+      //古い投稿順
+      // direction: "ascending",
+
+    }]
   });
 
   // Notion APIからの応答から投稿の結果を取得します。
@@ -72,7 +86,7 @@ export const getSinglePost = async (slug: string) => {
   //console.log(metadata)
   const mdBlocks = await n2m.pageToMarkdown(page.id);
   const mdString = n2m.toMarkdownString(mdBlocks);
-  console.log(mdString);
+  //console.log(mdString);
 
   return {
     metadata,
@@ -106,4 +120,38 @@ export const getNumberOfPages =async () => {
     ?1
     : 0));
 
+}
+
+
+export const getPostsByTagAndPage = async (tagName: string, page: number) => {
+  const allPosts = await getAllPosts();
+  const posts = allPosts.filter((post) =>
+  post.tags.find((tag: string) => tag === tagName))
+
+  const startIndex = (page - 1) * NUMBER_OF_POSTS_PER_PAGE;
+  const endIndex = startIndex + NUMBER_OF_POSTS_PER_PAGE;
+
+  return posts.slice(startIndex,endIndex);
+}
+
+export const getNumberOfPagesByTag =async (tagName:string) => {
+  const allPosts =await getAllPosts();
+  const posts = allPosts.filter((post) =>
+  post.tags.find((tag: string) => tag === tagName)
+  )
+
+  return(
+    Math.floor(posts.length /NUMBER_OF_POSTS_PER_PAGE) + (posts.length % NUMBER_OF_POSTS_PER_PAGE > 0
+    ?1
+    : 0));
+}
+
+export const getAllTags =async () => {
+  const allPosts = await getAllPosts();
+
+  const allTagsDuplicationLists = allPosts.flatMap((post) => post.tags);
+  const set = new Set(allTagsDuplicationLists);
+const allTagsList = Array.from(set);
+
+return allTagsList;
 }
