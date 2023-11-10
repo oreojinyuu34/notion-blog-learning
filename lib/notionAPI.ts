@@ -70,8 +70,15 @@ const getPageMetaData = (post: any) => {
 };
 
 export const getSinglePost = async (slug: string) => {
-  const response =await notion.databases.query({
-    database_id:process.env.NOTION_DATABASE_ID,
+  // 環境変数からdatabase_idを取得し、undefinedでないことを保証します。
+  const databaseId = process.env.NOTION_DATABASE_ID;
+  if (!databaseId) {
+    // database_idが見つからない場合は、エラーを投げて処理を中断します。
+    throw new Error("The environment variable NOTION_DATABASE_ID is not defined.");
+  }
+
+  const response = await notion.databases.query({
+    database_id: databaseId, // 確実に文字列である変数を使用します。
     filter: {
       property: "Slug",
       formula: {
@@ -80,7 +87,7 @@ export const getSinglePost = async (slug: string) => {
         }
       }
     }
-  })
+  });
   const page = response.results[0]
   const metadata = getPageMetaData(page)
   //console.log(metadata)
